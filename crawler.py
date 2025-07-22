@@ -137,3 +137,129 @@ def main():
         
 if __name__ == "__main__":
     main()
+
+
+# import os
+# import time
+# import pandas as pd
+# from tqdm import tqdm
+
+# from selenium import webdriver
+# from selenium.webdriver.chrome.service import Service
+# from selenium.webdriver.common.by import By
+# from selenium.webdriver.support.ui import WebDriverWait
+# from selenium.webdriver.support import expected_conditions as EC
+# from webdriver_manager.chrome import ChromeDriverManager
+# from selenium.common.exceptions import TimeoutException, NoSuchElementException
+
+# # ==============================================================================
+# # --- 1. 설정값 ---
+# # ==============================================================================
+# # ★★★ 분석할 Notion 페이지의 URL을 여기에 입력하세요. ★★★
+# TARGET_PAGE_URL = "https://www.yoonelecbook.com/4dff98e7-eecc-485e-a65f-a8e787ad76c1" # 예: "https://www.yoonelecbook.com/..."
+
+# # 결과가 저장될 Excel 파일의 전체 경로
+# OUTPUT_EXCEL_PATH = r"D:\Download\CODE\flutter\HIVD\HIVD.xlsx"
+
+# # ==============================================================================
+# # --- 2. 메인 로직 ---
+# # ==============================================================================
+# def main():
+#     output_dir = os.path.dirname(OUTPUT_EXCEL_PATH)
+#     os.makedirs(output_dir, exist_ok=True)
+    
+#     print("웹 드라이버를 설정합니다...")
+#     options = webdriver.ChromeOptions()
+#     # options.add_argument('--headless') # 백그라운드 실행을 원할 경우 주석 해제
+#     options.add_argument('--log-level=3')
+#     service = Service(ChromeDriverManager().install())
+#     driver = webdriver.Chrome(service=service, options=options)
+#     wait = WebDriverWait(driver, 20)
+
+#     # 결과를 저장할 리스트
+#     all_results = []
+
+#     try:
+#         print(f"대상 페이지로 이동: {TARGET_PAGE_URL}")
+#         driver.get(TARGET_PAGE_URL)
+        
+#         # 페이지의 동적 로딩을 위해 충분히 기다립니다.
+#         # 맨 아래까지 스크롤하여 모든 항목이 로드되도록 합니다.
+#         print("페이지의 모든 항목을 로드하기 위해 스크롤합니다...")
+#         last_height = driver.execute_script("return document.body.scrollHeight")
+#         while True:
+#             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+#             time.sleep(2) # 스크롤 후 로딩 대기
+#             new_height = driver.execute_script("return document.body.scrollHeight")
+#             if new_height == last_height:
+#                 break
+#             last_height = new_height
+        
+#         # ★★★ 1. 모든 데이터 항목(하나의 행)을 찾습니다. ★★★
+#         # 'div.notion-collection-item' 이 클래스가 하나의 데이터 묶음입니다.
+#         collection_items = wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.notion-collection-item")))
+        
+#         num_items = len(collection_items)
+#         if num_items == 0:
+#             print("페이지에서 데이터 항목을 찾지 못했습니다. 셀렉터를 확인해주세요.")
+#             return
+            
+#         print(f"총 {num_items}개의 항목을 발견했습니다. 데이터 추출을 시작합니다.")
+        
+#         # tqdm을 사용하여 진행 상황을 표시합니다.
+#         for item in tqdm(collection_items, desc="항목 처리 중"):
+#             try:
+#                 # ★★★ 2. 각 항목 내부에서 필요한 정보를 추출합니다. ★★★
+#                 # div > div:nth-child(n) 구조를 활용하여 각 열의 데이터를 찾습니다.
+                
+#                 # 'error' (과전류) 추출
+#                 # 첫 번째 div의 a 태그 안 텍스트
+#                 error_element = item.find_element(By.CSS_SELECTOR, "div > a > span")
+#                 error_text = error_element.text.strip()
+                
+#                 # 'keypad 표시' (OC FAULT) 추출
+#                 # 두 번째 div의 텍스트
+#                 keypad_element = item.find_element(By.CSS_SELECTOR, "div:nth-child(2) > span")
+#                 keypad_text = keypad_element.text.strip()
+
+#                 # '내용' (인버터 출력전류...) 추출
+#                 # 세 번째 div의 텍스트
+#                 content_element = item.find_element(By.CSS_SELECTOR, "div:nth-child(3) > span")
+#                 content_text = content_element.text.strip()
+
+#                 # 추출된 데이터를 딕셔너리로 저장
+#                 final_row = {
+#                     'error': error_text,
+#                     'keypad 표시': keypad_text,
+#                     '내용': content_text
+#                 }
+#                 all_results.append(final_row)
+                
+#             except NoSuchElementException:
+#                 print("\n[경고] 항목 내에서 일부 요소를 찾지 못했습니다. 해당 항목은 건너뜁니다.")
+#                 continue
+#             except Exception as e:
+#                 print(f"\n항목 처리 중 오류 발생: {e}")
+
+#     except Exception as e:
+#         print(f"\n[치명적 오류] 자동화 중 문제가 발생했습니다: {type(e).__name__} - {e}")
+#     finally:
+#         # --- 3. 모든 결과를 Excel 파일로 저장 ---
+#         if not all_results:
+#             print("추출된 결과가 없어 Excel 파일을 생성하지 않습니다.")
+#         else:
+#             print("\n데이터 추출 완료. 결과를 Excel 파일로 저장합니다...")
+#             try:
+#                 df = pd.DataFrame(all_results)
+#                 # 컬럼 순서 고정
+#                 df = df[['error', 'keypad 표시', '내용']]
+#                 df.to_excel(OUTPUT_EXCEL_PATH, index=False, engine='openpyxl')
+#                 print(f"성공! 결과가 '{OUTPUT_EXCEL_PATH}'에 저장되었습니다.")
+#             except Exception as e:
+#                 print(f"Excel 파일 저장 중 오류 발생: {e}")
+        
+#         print("웹 드라이버를 종료합니다.")
+#         driver.quit()
+
+# if __name__ == "__main__":
+#     main()
